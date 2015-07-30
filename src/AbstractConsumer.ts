@@ -33,7 +33,7 @@ export interface ProcessRecordsCallback {
 export interface ConsumerExtension {
   processRecords: (records: AWS.kinesis.Record[], callback: ProcessRecordsCallback) => void
   initialize?: (callback: (err?: any) => void) => void
-  shutdown?: (callback: (err?: any) => void) => void
+  shutdown?: (callback: ProcessRecordsCallback) => void
 }
 
 // Stream consumer, meant to be extended.
@@ -66,9 +66,9 @@ export class AbstractConsumer {
   }
 
   // Called before a consumer exits. This method may be implemented by the child.
-  public shutdown (callback: (err?: Error) => void) {
+  public shutdown (callback: ProcessRecordsCallback) {
     this.log('No shutdown method defined, skipping')
-    callback()
+    callback(null, false)
   }
 
   constructor(opts) {
@@ -200,7 +200,7 @@ export class AbstractConsumer {
 
       // Call for the last time the consumer process and 
       // do the final checkpoint.
-      this.shutdown(function (err, checkpointSequenceNumber) {
+      _this.shutdown(function (err, checkpointSequenceNumber) {
         if (err){
           return _this._exit(err)
         }

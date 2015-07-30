@@ -194,8 +194,32 @@ export class AbstractConsumer {
     this.log('Marking shard as finished')
 
     this.lease.markFinished(function (err) {
-      _this._exit(err)
-    })
+      if(err){
+        return _this._exit(err)
+      }
+
+      // Call for the last time the consumer process and 
+      // do the final checkpoint.
+      this.shutdown(function (err, checkpointSequenceNumber) {
+        if (err){
+          return _this._exit(err)
+        }
+
+        // Don't checkpoint || // We haven't actually gotten any records so there is nothing to checkpoint
+        if (! checkpointSequenceNumber || ! _this.maxSequenceNumber){
+          process.exit(0);
+        }
+
+        // Default case to checkpoint the latest sequence number
+        if (checkpointSequenceNumber === true) {
+          checkpointSequenceNumber = _this.maxSequenceNumber
+        }
+
+        _this.lease.checkpoint(<string> checkpointSequenceNumber, function(){
+          process.exit(0);  
+        });
+      });
+    });
   }
 
   // Get records from the stream and wait for them to be processed.
